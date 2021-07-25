@@ -45,5 +45,47 @@ class SelfAttention(nn.Module):
         # this is the layer after concatenation i.e. num_heads * head_size
         self.fc_out = nn.Linear(embedding_size, embedding_size)
 
-    def forward(self):
-        raise NotImplementedError()
+    def forward(self, value_input: torch.Tensor, key_input: torch.Tensor, query_input: torch.Tensor, mask=None):
+        err_msg = "the query needs to have a dimension of 3 i.e. batch_size x seq_length x embedding_size"
+        assert len(query_input.shape) == 3, err_msg
+        batch_size = query_input.shape[0]
+
+        # this retrieves the vector size for the input vectors
+        val_seq_len, key_seq_len, query_seq_len = value_input.shape[1], key_input.shape[1], query_input.shape[1]
+
+        # reshape the embedding to run across the number of heads
+        segmented_val = value_input.view(batch_size, val_seq_len, self.num_heads, self.head_size)
+        segmented_keys = key_input.view(batch_size, key_seq_len, self.num_heads, self.head_size)
+        segmented_queries = query_input.view(batch_size, query_seq_len, self.num_heads, self.head_size)
+
+        # use torch.einsum to run the query x key step - we could optionally do a batch matrix multiply
+        # the dimensions in the tensors are [batch_size, seq_length, num_heads, head_size]
+        # the nhqk outlines the dimensions of the energy tensor
+        # i.e. energy output dims is [batch_size, num_heads, query_seq_len, key_seq_len]
+        energy = torch.einsum("nqhd,nkhd->nhqk", [segmented_queries, segmented_keys])
+
+        # optionally apply a mask
+        if mask is not None:
+            # replace all the elements in energy with negative infinity where the mask is 0
+            energy = energy.masked_fill(mask == 0, float("-1e20"))
+
+        # run softmax on the key dimension in energy i.e. [batch_size, num_heads, query_seq_len, key_seq_len]
+        # this essentially says how much attention do I want to pay to each input word in the input sequence
+        # for every word in the output sequence - BUT in each dimension of the embedding vector of each word
+        attention = torch.softmax(energy / self.embedding_size ** 0.5, dim=3)
+
+        # attention dims: [batch_size, num_heads, query_seq_len, key_seq_len]
+        # values dims: [batch_size, seq_length, num_heads, head_size]
+
+        # the key and value seq_length will always be the same
+        # we eventually want to get back to the embedding vector i.e. [batch_size, seq_length, num_heads, head_size]
+
+        # still unsure why we are using the query len - might need to do the explicit matrix calc to figure out the
+        # order of operations
+        out = torch.einsum("nhql,nlhd->nqhd", [attention, segmented_val])
+
+        # run the concatenation step to recover the embedding vectors for words
+        # we could use -1 as the last dimension here, but this will throw an error if we
+        # cannot recover the embedding size, which is what we want
+        out = out.view(batch_size, query_seq_len, self.embedding_size)
+        return out
