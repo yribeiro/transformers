@@ -107,4 +107,8 @@ class SelfAttention(nn.Module):
         # we could use -1 as the last dimension here, but this implementation will throw an error if we
         # cannot recover the embedding size, which is what we want
         out = out.view(batch_size, query_seq_len, self.embedding_size)
+
+        # send it through final linear layer
+        out = self.fc_out(out)
+
         return out
