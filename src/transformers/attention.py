@@ -40,9 +40,9 @@ class SelfAttention(nn.Module):
         # these layers are simple matrix maps i.e. inp * W = out
         # where inp: [1 x self.head_size], W: [self.head_size, self.head_size], out: [1 x self.head_size]
 
-        self.values = nn.Linear(self.head_size, self.head_size, bias=False)
-        self.keys = nn.Linear(self.head_size, self.head_size, bias=False)
-        self.queries = nn.Linear(self.head_size, self.head_size, bias=False)
+        self.fc_values = nn.Linear(self.head_size, self.head_size, bias=False)
+        self.fc_keys = nn.Linear(self.head_size, self.head_size, bias=False)
+        self.fc_queries = nn.Linear(self.head_size, self.head_size, bias=False)
 
         # this is the layer after concatenation i.e. num_heads * head_size
         self.fc_out = nn.Linear(embedding_size, embedding_size)
@@ -76,6 +76,10 @@ class SelfAttention(nn.Module):
         segmented_val = value_input.view(batch_size, val_seq_len, self.num_heads, self.head_size)
         segmented_keys = key_input.view(batch_size, key_seq_len, self.num_heads, self.head_size)
         segmented_queries = query_input.view(batch_size, query_seq_len, self.num_heads, self.head_size)
+
+        segmented_val = self.fc_values(segmented_val)
+        segmented_keys = self.fc_keys(segmented_keys)
+        segmented_queries = self.fc_queries(segmented_queries)
 
         # use torch.einsum to run the query x key step - we could optionally do a batch matrix multiply
         # the dimensions in the tensors are [batch_size, seq_length, num_heads, head_size]
