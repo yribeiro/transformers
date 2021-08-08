@@ -1,3 +1,5 @@
+from typing import Optional
+
 import torch
 import torch.nn as nn
 
@@ -45,7 +47,24 @@ class SelfAttention(nn.Module):
         # this is the layer after concatenation i.e. num_heads * head_size
         self.fc_out = nn.Linear(embedding_size, embedding_size)
 
-    def forward(self, value_input: torch.Tensor, key_input: torch.Tensor, query_input: torch.Tensor, mask=None):
+    def forward(
+            self, value_input: torch.Tensor, key_input: torch.Tensor, query_input: torch.Tensor,
+            mask: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
+        """
+        Method to run inference using the model.
+
+        :param value_input: Vector for the value input in attention.
+        :param key_input: Vector for the key input in attention.
+        :param query_input: Vector for the query input in attention.
+        :param mask:
+            Optional mask of ones and zeroes. The algorithm will set all elements in the energy tensor, whose indices
+            correspond to 1s in the mask, to a very high number. This results a near 0 value, after the
+            softmax function is applied to the tensor.
+        :return:
+            The batch_size x sequence length x embedding vector len tensor that contains attention embedded word
+            encodings.
+        """
         err_msg = "the query needs to have a dimension of 3 i.e. batch_size x seq_length x embedding_size"
         assert len(query_input.shape) == 3, err_msg
         batch_size = query_input.shape[0]
@@ -80,12 +99,12 @@ class SelfAttention(nn.Module):
         # the key and value seq_length will always be the same
         # we eventually want to get back to the embedding vector i.e. [batch_size, seq_length, num_heads, head_size]
 
-        # still unsure why we are using the query len - might need to do the explicit matrix calc to figure out the
-        # order of operations
+        # Query: still unsure why we are using the query len - might need to do the explicit matrix calc
+        # to figure out the order of operations
         out = torch.einsum("nhql,nlhd->nqhd", [attention, segmented_val])
 
         # run the concatenation step to recover the embedding vectors for words
-        # we could use -1 as the last dimension here, but this will throw an error if we
+        # we could use -1 as the last dimension here, but this implementation will throw an error if we
         # cannot recover the embedding size, which is what we want
         out = out.view(batch_size, query_seq_len, self.embedding_size)
         return out
