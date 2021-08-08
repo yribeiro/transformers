@@ -22,6 +22,18 @@ class Encoder(nn.Module):
             dropout_prob=0.5,
             device: str = "cpu"
     ):
+        """
+        Constructor
+
+        :param vocab_size: Size of the word vocabulary used in the training.
+        :param embedding_size: Size of the embedding vector to encode words.
+        :param num_layers: Number of transformer blocks to include in the encoder.
+        :param num_heads: Number of heads for the transformer blocks to split the embedding vector across.
+        :param forward_expansion: Size of the hidden layer in each of the transformer block FC layer.
+        :param max_length: Max length (number of keys) for the position embedding to contain learnable values.
+        :param dropout_prob: Probability to use in the dropout layer; defaults to 0.5.
+        :param device: Device to send the model and corresponding weights to; defaults to cpu.
+        """
         super(Encoder, self).__init__()
 
         self.embed_size = embedding_size
@@ -48,7 +60,16 @@ class Encoder(nn.Module):
         # memory
         self.to(self.device)
 
-    def forward(self, x, mask):
+    def forward(self, x):
+        """
+        Method to run inference using the model.
+
+        :param x: Input batch for the model which is batch_size x seq_length sized.
+        :return: The output from the encoder which contains the position embedded and attention weights output tensor.
+        """
+        # checks
+        assert len(x.shape) >= 2, "The encoder is expecting a batch_size x seq_length (at minimum) input tensor"
+
         batch_size, seq_length = x.shape
         # this creates a batch_size of vectors that contain numbers from 0 -> seq_length
         # in combination with the learnable position embeddings in the constructor create
@@ -60,6 +81,6 @@ class Encoder(nn.Module):
         # pass through the transformer section after applying position encodings
         for transformer in self.transformer_section:
             # in the encoder the input (query, key and value vectors) are all the same
-            out = transformer(out, out, out, mask)
-            
+            out = transformer(out, out, out)
+
         return out
