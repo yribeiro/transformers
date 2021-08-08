@@ -59,7 +59,7 @@ class SelfAttention(nn.Module):
         :param query_input: Vector for the query input in attention.
         :param mask:
             Optional mask of ones and zeroes. The algorithm will set all elements in the energy tensor, whose indices
-            correspond to 1s in the mask, to a very high number. This results a near 0 value, after the
+            correspond to 1s in the mask, to a very small number. This results a near 0 value, after the
             softmax function is applied to the tensor.
         :return:
             The batch_size x sequence length x embedding vector len tensor that contains attention embedded word
