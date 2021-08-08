@@ -60,7 +60,7 @@ class Encoder(nn.Module):
         # memory
         self.to(self.device)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         """
         Method to run inference using the model.
 
