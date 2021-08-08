@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 
 from transformers.attention import SelfAttention
+from transformers.blocks import AddNorm
 
 
 class TransformerBlock(nn.Module):
@@ -20,7 +21,7 @@ class TransformerBlock(nn.Module):
 
         :param embedding_size: Number of dimensions in the embedding vector used to encode words.
         :param num_heads: Number of heads to include in the self-attention block.
-        :param dropout_prob:
+        :param dropout_prob: Probability with which to dropout weights during learning.
         :param forward_expansion:
         """
         super(TransformerBlock, self).__init__()
@@ -28,8 +29,8 @@ class TransformerBlock(nn.Module):
         self.attention = SelfAttention(embedding_size, num_heads)
 
         # normalisation layer
-        self.norm1 = nn.LayerNorm(embedding_size)
-        self.norm2 = nn.LayerNorm(embedding_size)
+        self.add_norm1 = AddNorm(embedding_size)
+        self.add_norm2 = AddNorm(embedding_size)
 
         # this component allows flexibility to learn more complicated relationships
         self.feed_forward = nn.Sequential(
@@ -55,8 +56,8 @@ class TransformerBlock(nn.Module):
         """
         embedding_with_attention = self.attention(value_input, key_input, query_input, mask)
 
-        x = self.dropout(self.norm1(embedding_with_attention + query_input))
+        x = self.dropout(self.add_norm1(embedding_with_attention, query_input))
         out = self.feed_forward(x)
-        out = self.dropout(self.norm2(out + x))
+        out = self.dropout(self.add_norm2(out, x))
 
         return out
