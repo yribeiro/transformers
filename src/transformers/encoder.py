@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 from transformers.transformer import TransformerBlock
@@ -17,8 +18,8 @@ class Encoder(nn.Module):
             num_layers: int,
             num_heads: int,
             forward_expansion,
-            dropout_prob,
             max_length,
+            dropout_prob=0.5,
             device: str = "cpu"
     ):
         super(Encoder, self).__init__()
@@ -41,3 +42,24 @@ class Encoder(nn.Module):
             [TransformerBlock(embedding_size, num_heads, dropout_prob, forward_expansion) for _ in range(num_layers)]
         )
 
+        self.dropout = nn.Dropout(dropout_prob)
+
+        # send the entire module onto the device - which should take all modules and move to appropriate
+        # memory
+        self.to(self.device)
+
+    def forward(self, x, mask):
+        batch_size, seq_length = x.shape
+        # this creates a batch_size of vectors that contain numbers from 0 -> seq_length
+        # in combination with the learnable position embeddings in the constructor create
+        # position awareness in the model - still do not understand how this is happening!
+        positions = torch.arange(0, seq_length).expand(batch_size, seq_length).to(self.device)
+
+        out = self.dropout(self.word_embedding(x) + self.position_embedding(positions))
+
+        # pass through the transformer section after applying position encodings
+        for transformer in self.transformer_section:
+            # in the encoder the input (query, key and value vectors) are all the same
+            out = transformer(out, out, out, mask)
+            
+        return out
