@@ -23,6 +23,8 @@ class TransformerBlock(nn.Module):
         :param num_heads: Number of heads to include in the self-attention block.
         :param dropout_prob: Probability with which to dropout weights during learning.
         :param forward_expansion:
+            Term used from paper to indicate the hidden layer size in the FC layer after the multi-headed attention
+            block is used.
         """
         super(TransformerBlock, self).__init__()
 
